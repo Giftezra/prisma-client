@@ -4,9 +4,9 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-)sp(4(@-)hwqth)t(3k=#v05t^!&i+s&f(4ywb&6vot3(frv9q'
-BASE_URL = 'https://65ece2e2d189.ngrok-free.app'
-ALLOWED_ORIGINS = ['https://65ece2e2d189.ngrok-free.app']
-CSRF_TRUSTED_ORIGINS = ['https://65ece2e2d189.ngrok-free.app']
+BASE_URL = 'https://8d8231131287.ngrok-free.app'
+ALLOWED_ORIGINS = ['https://8d8231131287.ngrok-free.app']
+CSRF_TRUSTED_ORIGINS = ['https://8d8231131287.ngrok-free.app']
 
 DEBUG = True
 FORCE_SCRIPT_NAME = '/client'
@@ -95,6 +95,17 @@ TIME_ZONE = 'Europe/London'
 USE_I18N = True
 USE_TZ = True
 
+# REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -149,14 +160,14 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
 AUTH_USER_MODEL = 'main.User'
-STATIC_URL = 'client/static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from main.models import BookedAppointment,ServiceType, ValetType
+from main.models import BookedAppointment,ServiceType, ValetType, AddOns
 
 """ The view is used to define the structure of the booking api for the client.  """
 class BookingView(APIView):
@@ -14,25 +14,29 @@ class BookingView(APIView):
         'create_booking' : 'create_booking',
         'cancel_booking' : 'cancel_booking',
         'reschedule_booking' : 'reschedule_booking',
+        'get_add_ons' : 'get_add_ons',
     }
     """ Here we will override the crud methods and define the methods that would route the url to the appropriate function """
     def get(self, request, *args, **kwargs):
         action = kwargs.get('action')
         if action not in self.action_handlers:
             return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
-        return getattr(self, self.action_handlers[action])(request, *args, **kwargs)
+        handler = getattr(self, self.action_handlers[action])
+        return handler(request)
     
     def post(self, request, *args, **kwargs):
         action = kwargs.get('action')
         if action not in self.action_handlers: 
             return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
-        return getattr(self, self.action_handlers[action])(request, *args, **kwargs)
+        handler = getattr(self, self.action_handlers[action])
+        return handler(request)
     
     def patch(self, request, *args, **kwargs):
         action = kwargs.get('action')
         if action not in self.action_handlers:
             return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
-        return getattr(self, self.action_handlers[action])(request, *args, **kwargs)
+        handler = getattr(self, self.action_handlers[action])
+        return handler(request)
     
     """ These are the methods which will serve the user their request using the action handlers
         to get the methods and route then through the get, post, patch given the method passed in the 
@@ -113,5 +117,37 @@ class BookingView(APIView):
     def reschedule_booking(self, request):
         pass
 
+    
+
     def create_booking(self, request):
         pass
+
+
+
+    def get_add_ons(self, request):
+        """ Get the add ons for the user to choose from
+            ARGS : void
+            RESPONSE : AddOnsProps[]
+            {
+                id : string
+                name : string
+                price : number
+                description : string
+                extra_duration : number 
+            }
+        """
+        try:
+            add_ons = AddOns.objects.all()
+            add_ons_data = []
+            for add_on in add_ons:
+                add_on_items = {
+                    "id" : add_on.id,
+                    "name" : add_on.name,
+                    "price" : add_on.price,
+                    "description" : add_on.description,
+                    "extra_duration" : add_on.extra_duration
+                }
+                add_ons_data.append(add_on_items)
+            return Response(add_ons_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

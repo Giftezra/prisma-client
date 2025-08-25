@@ -78,6 +78,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/html/static:/usr/share/nginx/html/static:ro 
     depends_on:
       - client_server
 

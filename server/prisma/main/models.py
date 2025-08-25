@@ -65,7 +65,7 @@ class Vehicles(models.Model):
     year = models.IntegerField()
     color = models.CharField(max_length=100)
     licence = models.CharField(max_length=100)  # Changed from registration to licence to match interface
-    image = models.ImageField( upload_to='vehicles/images/%Y/%m/%d/',blank=True, validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png'])])
+    image = models.ImageField(null=True, upload_to='vehicles/images/%Y/%m/%d/',blank=True, validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png'])])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -109,6 +109,17 @@ class DetailerProfile(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.email}"
+    
+class AddOns(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    extra_duration = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.name} - ${self.price}"
 
 
 class BookedAppointment(models.Model):
@@ -126,6 +137,7 @@ class BookedAppointment(models.Model):
     vehicle = models.ForeignKey(Vehicles, on_delete=models.CASCADE)
     valet_type = models.ForeignKey(ValetType, on_delete=models.CASCADE)
     service_type = models.ForeignKey(ServiceType, on_delete=models.CASCADE)
+    add_ons = models.ManyToManyField(AddOns, blank=True)
     detailer = models.ForeignKey(DetailerProfile, on_delete=models.CASCADE)
     address = models.ForeignKey(Address, on_delete=models.CASCADE)
     booking_date = models.DateTimeField(auto_now_add=True)  # When the booking was made

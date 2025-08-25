@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Vehicles, ServiceType, ValetType, DetailerProfile, BookedAppointment, Address
+from .models import User, Vehicles, ServiceType, ValetType, DetailerProfile, BookedAppointment, Address, AddOns
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import ValidationError   
 
@@ -9,6 +9,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class VehiclesSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(required=False, allow_null=True, use_url=True)
     class Meta:
         model = Vehicles
         fields = '__all__'
@@ -31,6 +32,15 @@ class DetailerProfileSerializer(serializers.ModelSerializer):
 class BookedAppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookedAppointment
+        fields = '__all__'
+
+class AddOnsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AddOns
+        fields = '__all__'
+class AddOnsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AddOns
         fields = '__all__'
 
 """ Customise the token serializer to get the attrs sent from the client 

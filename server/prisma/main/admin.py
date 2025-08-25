@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django import forms
 from django.db import models
-from .models import User, Vehicles, ServiceType, ValetType, DetailerProfile, BookedAppointment, Address
+from .models import User, Vehicles, ServiceType, ValetType, DetailerProfile, BookedAppointment, Address, AddOns
 
 # Custom form for ServiceType to handle description as textarea
 class ServiceTypeForm(forms.ModelForm):
@@ -126,3 +126,9 @@ class BookedAppointmentAdmin(admin.ModelAdmin):
     search_fields = ('user__name', 'vehicle__make', 'vehicle__model')
     readonly_fields = ('id', 'booking_date', 'created_at', 'updated_at')
     date_hierarchy = 'appointment_date'
+
+@admin.register(AddOns)
+class AddOnsAdmin(admin.ModelAdmin):
+    list_display = ('name', 'price', 'description', 'extra_duration')
+    search_fields = ('name',)
+    readonly_fields = ('created_at', 'updated_at')

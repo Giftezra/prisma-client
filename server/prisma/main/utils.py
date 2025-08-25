@@ -13,13 +13,17 @@ def get_full_media_url(relative_url):
     if not relative_url:
         return None
     
-    # Get the base URL from settings or use a default
-    # You can set this in your Django settings
+    # Get the base URL from settings
     base_url = getattr(settings, 'BASE_URL', 'http://localhost:8000')
     
     # Remove leading slash if present to avoid double slashes
     if relative_url.startswith('/'):
         relative_url = relative_url[1:]
+    
+    # For ngrok URLs, we need to ensure the path is correct
+    # The media files are served under /media/ path
+    if not relative_url.startswith('media/'):
+        relative_url = f"media/{relative_url}"
     
     # Combine base URL with relative URL
     return f"{base_url}/{relative_url}" 

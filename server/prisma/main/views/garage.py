@@ -6,6 +6,7 @@ from django.db import models
 from main.models import Vehicles, BookedAppointment
 from main.utils import get_full_media_url   
 from datetime import datetime, timedelta
+from main.serializer import VehiclesSerializer
 
 
 class GarageView(APIView):
@@ -28,26 +29,45 @@ class GarageView(APIView):
         action = kwargs.get('action')
         if action not in self.action_handlers:
             return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
-        return getattr(self, self.action_handlers[action])(request, *args, **kwargs)
+        handler = getattr(self, self.action_handlers[action])
+        
+        # Check if we have vehicle_id in kwargs (from URL path)
+        vehicle_id = kwargs.get('vehicle_id')
+        if vehicle_id is not None:
+            return handler(request, vehicle_id)
+        return handler(request)
     
     def post(self, request, *args, **kwargs):
         action = kwargs.get('action')
         if action not in self.action_handlers:
             return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
-        return getattr(self, self.action_handlers[action])(request, *args, **kwargs)
+        handler = getattr(self, self.action_handlers[action])
+        return handler(request)
     
     def patch(self, request, *args, **kwargs):
         action = kwargs.get('action')
         if action not in self.action_handlers:
             return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
-        return getattr(self, self.action_handlers[action])(request, *args, **kwargs)
+        handler = getattr(self, self.action_handlers[action])
+        
+        # Check if we have vehicle_id in kwargs (from URL path)
+        vehicle_id = kwargs.get('vehicle_id')
+        if vehicle_id is not None:
+            return handler(request, vehicle_id)
+        return handler(request)
     
     
     def delete(self, request, *args, **kwargs):
         action = kwargs.get('action')
         if action not in self.action_handlers:
             return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
-        return getattr(self, self.action_handlers[action])(request, *args, **kwargs)
+        handler = getattr(self, self.action_handlers[action])
+        
+        # Check if we have vehicle_id in kwargs (from URL path)
+        vehicle_id = kwargs.get('vehicle_id')
+        if vehicle_id is not None:
+            return handler(request, vehicle_id)
+        return handler(request)
     
     """ Here we will define the methods that would handle the jobs that are to be done on the server """
 
@@ -74,19 +94,19 @@ class GarageView(APIView):
                     "image": "any",
                 }
           """
+        print(request.data)
         try:
             make = request.data.get('make')
             model = request.data.get('model')
             year = request.data.get('year')
             color = request.data.get('color')
             licence = request.data.get('licence')
-            image = request.data.get('image')
+            image = request.FILES.get('image')  # Use request.FILES for file uploads
             
             if not all([make, model, year, color, licence]):
                 return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Call the vehicle object to add the vehicle to the db
-            # Pass the user object to the vehicle object
+            # Create vehicle without image first
             new_vehicle = Vehicles.objects.create(
                 user=request.user,
                 make=make,
@@ -94,19 +114,16 @@ class GarageView(APIView):
                 year=year,
                 color=color,
                 licence=licence,
-                image=image,
             )
-            # Save the vehicle to the db
-            new_vehicle.save()
+            # Handle image separately if provided
+            if image:
+                new_vehicle.image = image
+                new_vehicle.save()
+            
             # Return the vehicle object
+            print(f'You just added {new_vehicle.make} {new_vehicle.model} {new_vehicle.year} to your garage')
             return Response({
-                'id': new_vehicle.id,
-                'make': new_vehicle.make,
-                'model': new_vehicle.model,
-                'year': new_vehicle.year,
-                'color': new_vehicle.color,
-                'licence': new_vehicle.licence,
-                'image': get_full_media_url(new_vehicle.image.url),
+                'message': f'You just added {new_vehicle.make} {new_vehicle.model} {new_vehicle.year} to your garage',
             }, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -133,6 +150,9 @@ class GarageView(APIView):
         try:
             # Get all the vehicles from the db associated with the user
             vehicles = Vehicles.objects.filter(user=request.user)
+            serializer = VehiclesSerializer(vehicles, many=True)
+            print('serializer.data', serializer.data)
+
             vehicles_list = []
             for vehicle in vehicles:
                 vehicles_list.append({
@@ -142,14 +162,15 @@ class GarageView(APIView):
                     'year': vehicle.year,
                     'color': vehicle.color,
                     'licence': vehicle.licence,
-                    'image': get_full_media_url(vehicle.image.url),
+                    'image': get_full_media_url(vehicle.image.url) if vehicle.image else None,
                 })
-            return Response(vehicles_list, status=status.HTTP_200_OK)
+            print(vehicles_list)
+            return Response({'vehicles': vehicles_list}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
 
-    def update_vehicle(self, request, vehicle_id):
+    def update_vehicle(self, request, vehicle_id=None):
         """ Update a vehicle in the db and return the vehicle object after updating it in the db
             ARGS:
                 {
@@ -170,8 +191,10 @@ class GarageView(APIView):
                     "licence": "string",
                     "image": "any",
                 }
+            URL PARAMS:
+                vehicle_id: The id of the vehicle to be updated in the db (from URL path)
             QUERY PARAMS:
-                vehicle_id: The id of the vehicle to be updated in the db
+                vehicle_id: The id of the vehicle to be updated in the db (fallback from query params)
           """
         try:
             make = request.data.get('make')
@@ -181,16 +204,22 @@ class GarageView(APIView):
             licence = request.data.get('licence')
             image = request.data.get('image')
 
-            # Get the vehicle_id from the query params
-            vehicle_id = request.query_params.get('vehicle_id')
+            # Get the vehicle_id from URL path first, then fallback to query params
+            if vehicle_id is None:
+                vehicle_id = request.query_params.get('vehicle_id')
+
+            if not vehicle_id:
+                return Response({'error': 'Vehicle ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
             try:
                 # Get the vehicle from the db
-                vehicle = Vehicles.objects.get(id=vehicle_id)
+                vehicle = Vehicles.objects.get(id=vehicle_id, user=request.user)
 
                 # Check if the vehicle exists and return an error if it does not
                 if not vehicle:
                     return Response({'error': 'Vehicle not found'}, status=status.HTTP_404_NOT_FOUND)
+            except Vehicles.DoesNotExist:
+                return Response({'error': 'Vehicle not found'}, status=status.HTTP_404_NOT_FOUND)
             except Exception as e:
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -211,51 +240,56 @@ class GarageView(APIView):
                 'year': vehicle.year,
                 'color': vehicle.color,
                 'licence': vehicle.licence,
-                'image': get_full_media_url(vehicle.image.url),
+                'image': get_full_media_url(vehicle.image.url) if vehicle.image else None,
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
 
-    def delete_vehicle(self, request):
+    def delete_vehicle(self, request, vehicle_id=None):
         """ Delete a vehicle from the db and return the vehicle object after deleting it from the db
             ARGS:
                 request: The request object that contains the user object
-                vehicle_id: The id of the vehicle to be deleted from the db
+                vehicle_id: The id of the vehicle to be deleted from the db (from URL path or query params)
             Returns:
                 {
-                    "id": "string",
-                    "make": "string",
-                    "model": "string",
-                    "year": "int",
-                    "color": "string",
-                    "licence": "string",
-                    "image": "any",
+                    "message": "string"
                 }
+            URL PARAMS:
+                vehicle_id: The id of the vehicle to be deleted from the db (from URL path)
             QUERY PARAMS:
-                vehicle_id: The id of the vehicle to be deleted from the db
+                vehicle_id: The id of the vehicle to be deleted from the db (fallback from query params)
           """
         try:
-            # Get the vehicle_id from the query params
-            vehicle_id = request.query_params.get('vehicle_id')
+            # Get the vehicle_id from URL path first, then fallback to query params
+            if vehicle_id is None:
+                vehicle_id = request.query_params.get('vehicle_id')
+            
+            if not vehicle_id:
+                return Response({'error': 'Vehicle ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
             # Get the vehicle from the db
-            vehicle = Vehicles.objects.get(id=vehicle_id)
-
-            # Check if the vehicle exists and return an error if it does not
-            if not vehicle:
+            try:
+                vehicle = Vehicles.objects.get(id=vehicle_id, user=request.user)
+            except Vehicles.DoesNotExist:
                 return Response({'error': 'Vehicle not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            # Store vehicle info before deletion for the response message
+            vehicle_make = vehicle.make
+            vehicle_model = vehicle.model
+            
             # Delete the vehicle from the db
             vehicle.delete()
-            # Return the vehicle object
+            
+            # Return success message
             return Response({
-                'id': vehicle.id,
-                'message': f'You have successfully deleted {vehicle.make} {vehicle.model} from your garage',
+                'message': f'You have successfully deleted {vehicle_make} {vehicle_model} from your garage',
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)  
         
         
-    def get_vehicle_stats(self, request, vehicle_id):
+    def get_vehicle_stats(self, request, vehicle_id=None):
         """ Get the stats of a vehicle from the db and return the vehicle stats object
             ARGS:
                 request: The request object that contains the user object
@@ -275,12 +309,15 @@ class GarageView(APIView):
                     "last_cleaned": "string",
                     "next_recommended_service": "string"
                 }
+            URL PARAMS:
+                vehicle_id: The id of the vehicle to get the stats for (from URL path)
             QUERY PARAMS:
-                vehicle_id: The id of the vehicle to get the stats for
+                vehicle_id: The id of the vehicle to get the stats for (fallback from query params)
           """
         try:
-            # Get the vehicle_id from the query params
-            vehicle_id = request.query_params.get('vehicle_id')
+            # Get the vehicle_id from URL path first, then fallback to query params
+            if vehicle_id is None:
+                vehicle_id = request.query_params.get('vehicle_id')
             
             if not vehicle_id:
                 return Response({'error': 'Vehicle ID is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -295,7 +332,7 @@ class GarageView(APIView):
             bookings = BookedAppointment.objects.filter(vehicle=vehicle)
             
             # Calculate total bookings
-            total_bookings = bookings.count()
+            total_bookings = bookings.count() if bookings else 0
             
             # Calculate total amount from completed bookings
             total_amount = bookings.filter(status='completed').aggregate(
@@ -304,7 +341,7 @@ class GarageView(APIView):
             
             # Get the last cleaned date (last completed booking)
             last_cleaned = None
-            last_completed_booking = bookings.filter(status='completed').order_by('-appointment_date').first()
+            last_completed_booking = bookings.filter(status='completed').order_by('-appointment_date').first() if bookings else None
             if last_completed_booking:
                 last_cleaned = last_completed_booking.appointment_date.isoformat()
             
@@ -315,6 +352,7 @@ class GarageView(APIView):
                 next_recommended_service = (last_cleaned_date + timedelta(days=14)).isoformat()
             else:
                 next_recommended_service = (datetime.now() + timedelta(days=14)).isoformat()
+
             
             # Return the vehicle stats
             return Response({
